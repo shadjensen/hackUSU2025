@@ -8,7 +8,6 @@ class FoodViewModel : ViewModel() {
     private val _ingredients = mutableStateListOf<Ingredient>()
     val ingredients: List<Ingredient> get() = _ingredients
 
-
     fun addIngredient(igredient: Ingredient) {
         _ingredients.add(igredient)
     }
@@ -19,6 +18,22 @@ class FoodViewModel : ViewModel() {
 
     fun clearIngredients() {
         _ingredients.clear()
+    }
+
+    private val _recipes = mutableStateListOf<Recipe>()
+    val recipes: List<Recipe> get() = _recipes
+
+    fun addRecipe(recipe: Recipe) {
+        _recipes.add(recipe)
+    }
+
+    fun clearRecipeList() {
+        _recipes.clear()
+    }
+
+    fun setRecipes(newList: MutableList<Recipe>) {
+        _recipes.clear()
+        _recipes.addAll(newList)
     }
 
 }
