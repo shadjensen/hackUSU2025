@@ -348,6 +348,25 @@ fun FindRecipesButton(onFindRecipes: () -> Unit){
 
 @Composable
 fun DisplayRecipeScreen(viewModel: FoodViewModel, onReturnToIngredients: ()-> Unit){
+    val foodCategories = mutableListOf(
+        "None",
+        "Desserts",
+        "Breakfast",
+        "Meat-Based",
+        "Pasta & Italian",
+        "Seafood",
+        "Soups & Stews",
+        "Vegetarian & Vegan",
+        "Baking & Breads",
+        "Mexican",
+        "Asian",
+        "Slow Cooker & Instant Pot",
+        "Healthy & Diet-Friendly",
+        "Drinks & Cocktails",
+        "Holiday & Seasonal"
+    )
+
+
     //TODO - Call API to generate List
     val recipes = mutableListOf(
         Recipe("A quiche", "https://www.youtube.com/", 0.76),
@@ -362,6 +381,12 @@ fun DisplayRecipeScreen(viewModel: FoodViewModel, onReturnToIngredients: ()-> Un
         .fillMaxSize()
         .padding(16.dp)
     ){
+        DoubleTopBar(dropDownItems = foodCategories.toList(),
+            selectedItem = foodCategories[0],
+            onItemSelected = {item -> Log.d("Category Selected", "${item} category was selected")},
+            searchText = "",
+            onSearchTextChange = {item -> Log.d("Search", "search value changed")})
+
         viewModel.recipes.forEach { recipe ->
             RecipeScreen(recipe)
         }
@@ -402,36 +427,36 @@ fun DoubleTopBar(
             modifier = Modifier
                 .fillMaxWidth()
                 .shadow(8.dp),
-            colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary)
-        )
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(8.dp)
-                .clickable { expanded = true }
-        ) {
-            Text(
-                text = selectedItem,
-                color = Color.White,
-                modifier = Modifier.padding(16.dp)
-            )
-
-            DropdownMenu(
-                expanded = expanded,
-                onDismissRequest = { expanded = false }
-            ) {
-                dropDownItems.forEach { item ->
-                    DropdownMenuItem(
-                        text = { Text(item) },
-                        onClick = {
-                            onItemSelected(item)
-                            expanded = false
-                        }
+            colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary),
+            actions = {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(8.dp)
+                        .clickable { expanded = true }
+                ) {
+                    Text(
+                        text = selectedItem,
+                        color = Color.White,
+                        modifier = Modifier.padding(16.dp)
                     )
+
+                    DropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false }
+                    ) {
+                        dropDownItems.forEach { item ->
+                            DropdownMenuItem(
+                                text = { Text(item) },
+                                onClick = {
+                                    onItemSelected(item)
+                                    expanded = false
+                                }
+                            )
+                        }
+                    }
                 }
             }
-        }
-
+        )
     }
 }
