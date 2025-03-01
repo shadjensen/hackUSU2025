@@ -1,5 +1,7 @@
 package com.example.hackusu2025
 
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -39,14 +41,21 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.hackusu2025.ui.theme.HackUSU2025Theme
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 
 
 data class Ingredient(val name: String, var quantity: Int)
+data class Recipe(val name: String, val url: String, val score: Double)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -61,15 +70,16 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun PopulateIngredientScreen(onFindRecipeButton: () -> Unit){
-    val items = remember { mutableStateListOf(Ingredient("pizza crust", 1)) }
+fun PopulateIngredientScreen(viewModel: FoodViewModel = viewModel(),
+                             onFindRecipeButton: () -> Unit){
+    val items = viewModel.ingredients
 
     Box(modifier = Modifier.fillMaxSize()){
     Scaffold(
         topBar = {
             TopMenuBar(
             onClearList = {
-                items.clear()
+                viewModel.clearIngredients()
                 Log.d("Ingredients Cleared", "All Items in List are ${items.toList().toString()}")
             }
         ) },
@@ -83,19 +93,12 @@ fun PopulateIngredientScreen(onFindRecipeButton: () -> Unit){
             DynamicIngredientScreen(
                 items,
                 onAddItem = { newIngredient ->
-                    items.add(newIngredient)
+                    viewModel.addIngredient(newIngredient)
                 },
                 onUpdateQuantity = {index, newQuantity ->
-                    items[index] = items[index].copy(quantity = newQuantity)
+                    viewModel.updateIngredientQuantity(index, newQuantity)
                 })
-
-            //Spacer(modifier = Modifier.weight(1f)) // Pushes button down
-
-
-
-
         }
-
     }
 
         Box(
@@ -114,14 +117,37 @@ fun PopulateIngredientScreen(onFindRecipeButton: () -> Unit){
 
 @Composable
 fun NavigationScreen() {
+    val navController = rememberNavController()
+    val viewModel: FoodViewModel = viewModel()
     var currentScreen by remember {mutableStateOf("populateIngredients")}
 
+    NavHost(navController = navController, startDestination = "populateIngredients") {
+        composable("populateIngredients") {
+            PopulateIngredientScreen (
+                viewModel = viewModel,
+                onFindRecipeButton = { navController.navigate("recipeDisplay")}
+            )
+        }
+
+        composable("recipeDisplay") {
+            DisplayRecipeScreen(
+                onReturnToIngredients = { navController.popBackStack() }
+            )
+        }
+
+    }
+
+
+
     when (currentScreen) {
-        "populateIngredients" -> PopulateIngredientScreen{ currentScreen = "recipeDisplay" }
+        "populateIngredients" -> PopulateIngredientScreen(
+            viewModel = viewModel,
+            onFindRecipeButton = { currentScreen = "recipeDisplay" }
+        )
+
         "recipeDisplay" -> DisplayRecipeScreen(
             onReturnToIngredients = {currentScreen = "populateIngredients" })
     }
-
 
 }
 
@@ -282,15 +308,39 @@ fun FindRecipesButton(onFindRecipes: () -> Unit){
             modifier = Modifier
                 .fillMaxWidth(0.8f)
                 .height(100.dp)
-                .background(Color.Green)
             )
         {
-            Text("Find Recipes")
+            Text("Find Recipes", fontSize = 24.sp)
     }
 }
 
 
 @Composable
 fun DisplayRecipeScreen(onReturnToIngredients: ()-> Unit){
+    Column(modifier = Modifier.fillMaxSize().padding(16.dp)){
+        LazyColumn()
+        {
+
+
+
+        }
+    }
     Text("This screen displays Ingredients")
+}
+
+
+@Composable
+fun RecipeScreen(recipe: Recipe){
+    val context = LocalContext.current
+
+    Button (
+        onClick = {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(recipe.url))
+            context.startActivity(intent)
+        },
+        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+    ) {
+        Text("recipe", fontSize = 18.sp)
+    }
+
 }
