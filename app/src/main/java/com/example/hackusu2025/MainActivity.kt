@@ -1,5 +1,6 @@
 package com.example.hackusu2025
 
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -7,6 +8,8 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -27,6 +30,7 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -59,7 +63,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 
 
-data class Ingredient(val name: String, var quantity: Int)
+data class Ingredient(val name: String, var quantity: Int, var unit: String)
 data class Recipe(val name: String, val url: String, val score: Double)
 
 class MainActivity : ComponentActivity() {
@@ -102,7 +106,21 @@ fun PopulateIngredientScreen(viewModel: FoodViewModel = viewModel(),
                 },
                 onUpdateQuantity = {index, newQuantity ->
                     viewModel.updateIngredientQuantity(index, newQuantity)
+                },
+                onUpdateUnit = { index, newUnit ->
+                    viewModel.updateIngredientUnit(index, newUnit)
+                },
+                onSpecifyQuantity = { index, checked ->
+                    Log.d("Specify Quantity", "Specify quantity was checked at ${index} with ${checked}")
+                    if (checked) {
+                        viewModel.updateIngredientUnit(index, "count")
+                        viewModel.updateIngredientQuantity(index, 1)
+                    } else {
+                        viewModel.updateIngredientQuantity(index, -1)
+                        viewModel.updateIngredientUnit(index, "count")
+                    }
                 })
+
         }
     }
 
@@ -150,7 +168,7 @@ fun TopMenuBar(onClearList: () -> Unit){
     var menuExpanded by remember { mutableStateOf(false) }
 
     TopAppBar(
-        title = { Text("My App", color = Color.White) },
+        title = { Text("SYVR", color = Color.White) },
         navigationIcon = {
             IconButton(onClick = { menuExpanded = true }) {
                 Icon(Icons.Default.Menu, contentDescription = "Menu", tint = Color.White)
@@ -174,17 +192,28 @@ fun TopMenuBar(onClearList: () -> Unit){
 }
 
 @Composable
-fun DynamicIngredientScreen(items: List<Ingredient>, onAddItem: (Ingredient) -> Unit, onUpdateQuantity: (Int, Int) -> Unit) {
+fun DynamicIngredientScreen(items: List<Ingredient>, onAddItem: (Ingredient) -> Unit, onUpdateQuantity: (Int, Int) -> Unit, onUpdateUnit: (Int, String) -> Unit, onSpecifyQuantity: (Int, Boolean) -> Unit) {
+
+    val units = mutableListOf("teaspoon", "tablespoon", "fluid ounce", "cup", "pint", "quart", "gallon", "count")
 
     Column(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
             modifier = Modifier.weight(1f)
         ) {
             items(items.size) { index ->
-                IngredientScreen(item = items[index],
+                IngredientScreen(
+                    index = index,
+                    item = items[index],
+                    units = units.toList(),
                     onQuantityChange = {newQuantity ->
                         Log.d("Ingredient Quantity Update", "${items[index].name} changed from ${items[index].quantity} to ${newQuantity}")
                         onUpdateQuantity(index, newQuantity)
+                    },
+                    onUnitSelected = { newUnit ->
+                        onUpdateUnit(index, newUnit)
+                    },
+                    onSpecifyQuantity = { index, bool ->
+                        onSpecifyQuantity(index, bool)
                     }
                 )}
             item {
@@ -202,47 +231,108 @@ fun DynamicIngredientScreen(items: List<Ingredient>, onAddItem: (Ingredient) -> 
 }
 
 @Composable
-fun IngredientScreen(item: Ingredient, onQuantityChange: (Int) -> Unit) {
+fun IngredientScreen(index: Int,
+                     item: Ingredient,
+                     units: List<String>,
+                     onQuantityChange: (Int) -> Unit,
+                     onUnitSelected: (String) -> Unit,
+                     onSpecifyQuantity: (Int, Boolean) -> Unit
+) {
+    var specifyQuantity by remember { mutableStateOf(true)}
+    var expanded by remember { mutableStateOf(false) }
+    var selectedUnit by remember {mutableStateOf("gallon")}
 
-    Row(
-        modifier = Modifier
-            .padding(16.dp)
-            .fillMaxWidth(),
-    horizontalArrangement = Arrangement.SpaceBetween,
-    verticalAlignment = Alignment.CenterVertically
-    ) {
+    Column(modifier = Modifier.padding(16.dp)){
 
-        Text(text = item.name,
-            modifier = Modifier
-                .padding(16.dp)
-                .weight(1f),
-            textAlign = TextAlign.Start
-        )
+
 
         Row(
+            modifier = Modifier
+                .fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
 
-            //Decrement Button
-            Button(onClick = { if (item.quantity > 1)
-                onQuantityChange(item.quantity - 1)
-            }){
-                Text("-")
-            }
-            // Read-only quantity display
-            TextField(
-                value = item.quantity.toString(),
-                onValueChange = {}, // No-op to prevent user editing
-                readOnly = true, // Makes the field non-editable
-                modifier = Modifier.padding(horizontal = 8.dp)
-                    .width(70.dp)
+            Text(
+                text = item.name,
+                modifier = Modifier
+                    .padding(16.dp)
+                    .weight(1f),
+                textAlign = TextAlign.Start
             )
-            Button(onClick = {
-                onQuantityChange(item.quantity + 1)
-            }) {
-                Text("+")
+
+            if (specifyQuantity) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+
+                    //Decrement Button
+                    Button(onClick = {
+                        if (item.quantity > 1)
+                            onQuantityChange(item.quantity - 1)
+                    }) {
+                        Text("-")
+                    }
+                    // Read-only quantity display
+                    TextField(
+                        value = item.quantity.toString(),
+                        onValueChange = {}, // No-op to prevent user editing
+                        readOnly = true, // Makes the field non-editable
+                        modifier = Modifier.padding(horizontal = 8.dp)
+                            .width(75.dp)
+                    )
+                    Button(onClick = {
+                        onQuantityChange(item.quantity + 1)
+                    }) {
+                        Text("+")
+                    }
+                }
+
+            }
+        }
+
+        Row (modifier = Modifier
+            .fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .clickable { expanded = true  }
+                    .border(1.dp, Color.Gray, shape = RoundedCornerShape(4.dp))
+                    .padding(8.dp)
+            ) {
+                Text(text = selectedUnit, modifier = Modifier.padding(8.dp))
+
+                DropdownMenu(expanded = expanded, onDismissRequest = {expanded = false}
+                ) {
+                    units.forEach {unit ->
+                        DropdownMenuItem(
+                            text = { Text(unit) },
+                            onClick = {
+                                selectedUnit = unit
+                                onUnitSelected(unit)
+                                expanded = false
+                            }
+
+                        )
+                    }
+                }
+
             }
 
+            //specify quantity checkbox
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(
+                    checked = specifyQuantity,
+                    onCheckedChange = { isChecked ->
+                        specifyQuantity = isChecked
+                        onSpecifyQuantity(index, isChecked)  }
+                )
+                Text("Specify Quantity", modifier = Modifier.padding(start = 4.dp))
+
+            }
 
 
         }
@@ -310,7 +400,7 @@ fun AddIngredientButton(state: String, onAddItem: (Ingredient) -> Unit){
                 Button(
                     onClick = {
                         if (ingredientName.isNotBlank()) {
-                            onAddItem(Ingredient(ingredientName, quantity))
+                            onAddItem(Ingredient(ingredientName, quantity, "count"))
                             ingredientName = ""
                             quantity = 1
                             isExpanded = false
@@ -347,9 +437,11 @@ fun FindRecipesButton(onFindRecipes: () -> Unit){
 
 
 @Composable
-fun DisplayRecipeScreen(viewModel: FoodViewModel, onReturnToIngredients: ()-> Unit){
+fun DisplayRecipeScreen(viewModel: FoodViewModel,
+                        onReturnToIngredients: ()-> Unit){
+    var selectedCategory by remember { mutableStateOf("") }
     val foodCategories = mutableListOf(
-        "None",
+        "",
         "Desserts",
         "Breakfast",
         "Meat-Based",
@@ -366,24 +458,42 @@ fun DisplayRecipeScreen(viewModel: FoodViewModel, onReturnToIngredients: ()-> Un
         "Holiday & Seasonal"
     )
 
+    Log.d("Conversion", "Begin converting input to output")
+    var convertedIngredients = ArrayList<Tuple>()
+    viewModel.ingredients.forEach{
+        convertedIngredients.add(Tuple(it.name, it.quantity * 1.0, it.unit))
+    }
 
-    //TODO - Call API to generate List
-    val recipes = mutableListOf(
-        Recipe("A quiche", "https://www.youtube.com/", 0.76),
-        Recipe("A big burrito", "https://www.amazon.com/", 0.17),
-        Recipe("Several small pancakes", "https://pokemon-auto-chess.com/lobby", 0.03),
-        Recipe("Some butter", "https://www.pokemon.com/us", 0.8413))
+    val context : Context = LocalContext.current
+    val returnRecipes = ReadIngredients.getBestFits(convertedIngredients, 1, selectedCategory, context)
+    Log.d("Conversion", "Successfully generated recipe list")
+
+
+    val recipes = mutableListOf(Recipe("", "", 1.0))
+    recipes.clear()
+
+    returnRecipes.forEach{ item ->
+        val parts = item.split(", ")
+        val score = parts[0].toDouble()
+        val url = parts[1]
+
+        val name = extractRecipeName(url)
+
+        recipes.add(Recipe(name, url, score))
+    }
+
+    Log.d("Conversion", "Finished creating recipe objects")
     recipes.sortByDescending { it.score }
 
     viewModel.setRecipes(recipes)
+    Log.d("Conversion", "Assigned recipes to view model")
 
     Column(modifier = Modifier
         .fillMaxSize()
         .padding(16.dp)
     ){
         DoubleTopBar(dropDownItems = foodCategories.toList(),
-            selectedItem = foodCategories[0],
-            onItemSelected = {item -> Log.d("Category Selected", "${item} category was selected")},
+            onItemSelected = {item -> selectedCategory = item} ,
             searchText = "",
             onSearchTextChange = {item -> Log.d("Search", "search value changed")})
 
@@ -413,11 +523,11 @@ fun RecipeScreen(recipe: Recipe){
 @Composable
 fun DoubleTopBar(
     dropDownItems: List<String>,
-    selectedItem: String,
     onItemSelected: (String) -> Unit,
     searchText: String,
     onSearchTextChange: (String) -> Unit)
 {
+    var selectedItem by remember {mutableStateOf("")}
     var expanded by remember {mutableStateOf(false)}
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 
@@ -443,14 +553,22 @@ fun DoubleTopBar(
 
                     DropdownMenu(
                         expanded = expanded,
-                        onDismissRequest = { expanded = false }
+                        onDismissRequest = { expanded = false },
+                        modifier = Modifier.fillMaxWidth()
+                            .background(Color.Gray.copy(alpha = 0.2f))  // Make the dropdown a little lighter
+                        ,
+
+
                     ) {
+
+
                         dropDownItems.forEach { item ->
                             DropdownMenuItem(
                                 text = { Text(item) },
                                 onClick = {
                                     onItemSelected(item)
                                     expanded = false
+                                    selectedItem = item
                                 }
                             )
                         }
@@ -459,4 +577,17 @@ fun DoubleTopBar(
             }
         )
     }
+}
+
+//this function was generated by ChatGPT
+fun extractRecipeName(url: String): String {
+    // Regular expression to capture the recipe name from the URL
+    val regex = """/recipe/(\d+)/(.+)""".toRegex()
+
+    val matchResult = regex.find(url)
+    return matchResult
+        ?.groupValues
+        ?.get(2)
+        ?.dropLast(1)
+        ?.replace("-", " ")?.toLowerCase() ?: "Unknown"
 }

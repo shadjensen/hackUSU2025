@@ -16,6 +16,10 @@ class FoodViewModel : ViewModel() {
         _ingredients[index] = _ingredients[index].copy(quantity = newQuantity)
     }
 
+    fun updateIngredientUnit(index: Int, newUnit: String){
+        _ingredients[index] = _ingredients[index].copy(unit = newUnit)
+    }
+
     fun clearIngredients() {
         _ingredients.clear()
     }
